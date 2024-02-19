@@ -1,6 +1,5 @@
 from typing import Callable, Any
 import dataclasses
-import collections
 
 import jax
 
@@ -25,36 +24,7 @@ def forward(model: Model, *args, **kwargs):
 
 
 def model_inherit(cls):
-
-    new_type = type(cls.__name__, (cls, Model), {})
-    
-    '''
-    aux_data = list()
-    children = list()
-
-    for f in dataclasses.fields(cls):
-        type_name = str(f.type).lower()
-
-        if 'model' in type_name or 'jax.array' in type_name:
-            children.append(f.name)
-        else:
-            aux_data.append(f.name)
-
-    print(aux_data)
-    print(children)
-
-    def tree_flatten(self):
-        return tuple(self.__dict__[f] for f in children), {f: self.__dict__[f] for f in aux_data}
-
-    @classmethod
-    def tree_unflatten(cls, aux_data, children):
-        return cls(*children, **aux_data)
-    
-    setattr(new_type, 'tree_flatten', tree_flatten)
-    setattr(new_type, 'tree_unflatten', tree_unflatten)
-    '''
-
-    return new_type
+    return type(cls.__name__, (cls, Model), {})
 
 
 def modelclass(cls):

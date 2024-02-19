@@ -4,7 +4,6 @@ from dataclasses import dataclass
 import jax
 import jax.numpy as jnp
 
-from pytree import PyTree
 from model import Model, modelclass, forward
 from optimizer import optimizerclass, step
 
