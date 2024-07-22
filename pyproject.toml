@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "jax_primitives"
+version = "0.0.1"
+authors = [
+  { name = "Richman Feynard" },
+]
+
+description = "Primitives to build and train models using JAX"
+readme = "README.md"
+requires-python = ">=3.11"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: The Unlicense",
+    "Operating System :: OS Independent",
+]
+
+[project.urls]
+Homepage = "https://github.com/feynard/jax-primitives"
+Issues = "https://github.com/feynard/jax-primitives/issues"
