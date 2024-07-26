@@ -9,11 +9,12 @@ from .base import modelclass, optimizerclass, Dynamic
 @modelclass
 class Linear:
 
-    w: jax.Array | Dynamic
-    b: jax.Array | Dynamic
+    w: Dynamic[jax.Array]
+    b: Dynamic[jax.Array]
 
     @classmethod
     def create(cls, in_dim, out_dim, key, bias: bool = True):
+
         w = jnp.sqrt(2 / in_dim) * jax.random.normal(key, (in_dim, out_dim))
         b = jnp.zeros(out_dim) if bias else None
 
@@ -29,13 +30,13 @@ class Linear:
 @optimizerclass
 class Adam:
     
-    t: int | Dynamic
+    t: Dynamic[int]
     alpha: float
     beta_1: float
     beta_2: float
     eps: float
-    m: Dynamic
-    v: Dynamic
+    m: Dynamic[jax.Array]
+    v: Dynamic[jax.Array]
 
     @classmethod
     def create(
@@ -69,7 +70,7 @@ class Adam:
 @modelclass
 class MLP:
 
-    layers: List[Linear] | Dynamic
+    layers: Dynamic[List[Linear]]
 
     @classmethod
     def create(cls, in_dim, out_dim, inner_dim, n_layers, key):
@@ -81,7 +82,7 @@ class MLP:
         layers += [Linear.create(inner_dim, out_dim, keys[n_layers + 1])]
 
         return cls(layers)
-
+    
     def __call__(self, x):
         y = x
         

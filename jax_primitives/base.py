@@ -1,4 +1,4 @@
-from typing import TypeVar, TypeAlias
+from typing import TypeVar, TypeAlias, Type
 from typing import SupportsFloat, Self, Union, List
 from typing import get_type_hints, get_origin, get_args
 
@@ -7,7 +7,10 @@ from dataclasses import dataclass
 import jax
 
 
-Dynamic = TypeVar('Dynamic')
+class Static[T]: ...
+class Dynamic[T]: ...
+class Constant[T]: ...
+
 Learnable: TypeAlias = Dynamic
 
 
@@ -40,12 +43,6 @@ def __mul__(self, t: Self | SupportsFloat) -> Self:
 def __rmul__(self, t: Self | SupportsFloat) -> Self:
     return self.__mul__(t)
 
-
-def __truediv__ (self, t: Self | SupportsFloat) -> Self:
-    if isinstance(t, type(self)):
-        return jax.tree_util.tree_map(lambda x, y: x / y, self, t)
-    elif isinstance(t, SupportsFloat):
-        return jax.tree_util.tree_map(lambda x: x / t, self)
 
 def __truediv__ (self, t: Self | SupportsFloat) -> Self:
     if isinstance(t, type(self)):
@@ -90,6 +87,7 @@ def create_tree_flatten(dynamic_vars: List[str], static_vars: List[str]):
     
     return tree_flatten
 
+
 def create_tree_unflatten(dynamic_vars: List[str], static_vars: List[str]):
     dynamic_vars = dynamic_vars
     static_vars = static_vars
@@ -109,6 +107,20 @@ def create_tree_unflatten(dynamic_vars: List[str], static_vars: List[str]):
     return tree_unflatten
 
 
+def is_dynamic(type_object: Type) -> bool:
+    origin = get_origin(type_object)
+
+    if type_object is Dynamic:
+        return True
+
+    if origin is not None and origin is Dynamic:
+        return True
+        
+    if origin is None and get_args(type_object) is Dynamic:
+        return True
+    
+    return False
+
 
 def pytree(cls):
     cls = dataclass(cls, repr=False)
@@ -119,7 +131,7 @@ def pytree(cls):
     static = []
 
     for name in hints:
-        if get_origin(hints[name]) is Union and Dynamic in get_args(hints[name]) or hints[name] is Dynamic:
+        if is_dynamic(hints[name]):
             dynamic.append(name)
         else:
             static.append(name)
@@ -127,13 +139,12 @@ def pytree(cls):
     cls._tree_flatten = create_tree_flatten(dynamic, static)
     cls._tree_unflatten = create_tree_unflatten(dynamic, static)
 
-    cls.__add__ =__add__
+    cls.__add__ = __add__
     cls.__radd__ = __radd__
     cls.__sub__ = __sub__
     cls.__neg__ = __neg__
     cls.__mul__ = __mul__
     cls.__rmul__ = __rmul__
-    cls.__truediv__ = __truediv__
     cls.__truediv__ = __truediv__
     cls.__rtruediv__ = __rtruediv__
     cls.__pow__ = __pow__
@@ -147,10 +158,10 @@ def pytree(cls):
 def modelclass(cls):
     
     if '__call__' not in dir(cls):
-        raise NotImplementedError(f"__call__ method is not implemented for {cls.__name__}")
+        raise NotImplementedError(f"`__call__` method is not implemented for {cls.__name__} class")
 
     if 'create' not in dir(cls):
-        raise NotImplementedError(f"`create` method is not implemented for {cls.__name__}")
+        raise NotImplementedError(f"`create` method is not implemented for {cls.__name__} class")
     
     cls = pytree(cls)
     
@@ -160,10 +171,10 @@ def modelclass(cls):
 def optimizerclass(cls):
     
     if 'step' not in dir(cls):
-        raise NotImplementedError(f"`step` method is not implemented for {cls.__name__}")
+        raise NotImplementedError(f"`step` method is not implemented for {cls.__name__} class")
 
     if 'create' not in dir(cls):
-        raise NotImplementedError(f"`create` method is not implemented for {cls.__name__}")
+        raise NotImplementedError(f"`create` method is not implemented for {cls.__name__} class")
     
     cls = pytree(cls)
     
