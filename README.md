@@ -26,7 +26,7 @@ x = jnp.linspace(-1, 1, 100)
 y = x ** 3 - x + 0.25 * jnp.sin(x * 16)
 ```
 
-![image](images/data.svg)
+![Input Data Plot](images/data.svg)
 
 Train the model
 ```python
@@ -39,11 +39,11 @@ for i in range(2000):
 y_pred = mlp(x.reshape(100, 1))
 ```
 
-![image](images/predictions.svg)
+![Predictions Plot](images/predictions.svg)
 
 ## Defining Your Model
 
-Just mark existing attributes of your class with `Dynamic` (used as nodes of a coresponing pytree) or `Static` (auxilary data fo the pytree) type hints in either available way:
+Just mark existing attributes of your class with `Dynamic` (used as nodes of a corresponding pytree) or `Static` (auxiliary data fo the pytree) type hints in either available way:
 
 ```python
 import jax
