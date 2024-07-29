@@ -2,6 +2,37 @@
 
 Some useful code for experimenting with ML using `JAX`
 
+## Defining Your Model
+
+Just mark existing attributes of your class with `Dynamic` (used as nodes of a corresponding pytree) or `Static` (auxiliary data fo the pytree) type hints in either available way, you can also use words `Learnable` and `Constant` (that is some part of your model that you don't want to optimize)
+
+```python
+import jax
+from jax_primitives import modelclass, Dynamic, Static
+
+@modelclass
+class LinearLayer:
+
+    w: Dynamic[jax.Array]   # dynamic / optimizable
+    b: Dynamic              # dynamic / optimizable (must be a pytree or an array)
+    in_dim: int             # static / constant, non learnable
+    out_dim: Static         # static / constant, non learnable
+
+    @classmethod
+    def create(cls, in_dim, out_dim, key):
+        w = jnp.sqrt(2 / in_dim) * jax.random.normal(key, (in_dim, out_dim))
+        b = jnp.zeros(out_dim)
+
+        return cls(w, b, in_dim, out_dim)
+
+    @jax.jit
+    def __call__(self, x):
+        return x @ self.w + self.b
+
+key = jax.random.key(0)
+layer = LinearLayer.create(8, 16, key)
+```
+
 ## Example
 
 ```python
@@ -26,7 +57,9 @@ x = jnp.linspace(-1, 1, 100)
 y = x ** 3 - x + 0.25 * jnp.sin(x * 16)
 ```
 
-![Input Data Plot](images/data.svg)
+<p align="center">
+  <img src="images/data.svg" alt="Input Data Plot"/>
+</p>
 
 Train the model
 ```python
@@ -39,35 +72,6 @@ for i in range(2000):
 y_pred = mlp(x.reshape(100, 1))
 ```
 
-![Predictions Plot](images/predictions.svg)
-
-## Defining Your Model
-
-Just mark existing attributes of your class with `Dynamic` (used as nodes of a corresponding pytree) or `Static` (auxiliary data fo the pytree) type hints in either available way:
-
-```python
-import jax
-from jax_primitives import modelclass, Dynamic, Static
-
-@modelclass
-class LinearLayer:
-
-    w: Dynamic[jax.Array]   # dynamic
-    b: Dynamic              # dynamic
-    in_dim: int             # static
-    out_dim: Static         # static
-
-    @classmethod
-    def create(cls, in_dim, out_dim, key):
-        w = jnp.sqrt(2 / in_dim) * jax.random.normal(key, (in_dim, out_dim))
-        b = jnp.zeros(out_dim)
-
-        return cls(w, b, in_dim, out_dim)
-
-    @jax.jit
-    def __call__(self, x):
-        return x @ self.w + self.b
-
-key = jax.random.key(0)
-layer = LinearLayer.create(8, 16, key)
-```
+<p align="center">
+  <img src="images/predictions.svg" alt="Predictions Plot"/>
+</p>

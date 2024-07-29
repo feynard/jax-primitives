@@ -7,11 +7,11 @@ from dataclasses import dataclass
 import jax
 
 
-class Static[T]: ...
 class Dynamic[T]: ...
-class Constant[T]: ...
+class Static[T]: ...
 
 Learnable: TypeAlias = Dynamic
+Constant: TypeAlias = Static
 
 
 def __add__(self, t: Self | SupportsFloat) -> Self:
@@ -97,12 +97,12 @@ def create_tree_unflatten(dynamic_vars: List[str], static_vars: List[str]):
         nonlocal dynamic_vars
         nonlocal static_vars
 
-        args = {
+        kwargs = {
             var: children[i] if i < len(dynamic_vars) else aux_data[i - len(dynamic_vars)]
             for i, var in enumerate(dynamic_vars + static_vars)
         }
 
-        return cls(**args)
+        return cls(**kwargs)
     
     return tree_unflatten
 

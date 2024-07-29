@@ -53,6 +53,7 @@ class Adam:
 
         return cls(0, alpha, beta_1, beta_2, eps, m, v)
     
+    @jax.jit
     def step(self, model, grads):
         t = self.t + 1
 
