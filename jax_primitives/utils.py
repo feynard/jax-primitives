@@ -1,5 +1,6 @@
 import jax
 
+
 class RandomKey:
 
     def __init__(self, seed: int = 0):

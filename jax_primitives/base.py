@@ -1,8 +1,6 @@
-from typing import TypeVar, TypeAlias, Type
-from typing import SupportsFloat, Self, Union, List
-from typing import get_type_hints, get_origin, get_args
-
 from dataclasses import dataclass
+from typing import (List, Self, SupportsFloat, Type, TypeAlias, TypeVar, Union,
+                    get_args, get_origin, get_type_hints)
 
 import jax
 
@@ -139,17 +137,6 @@ def pytree(cls):
     cls._tree_flatten = create_tree_flatten(dynamic, static)
     cls._tree_unflatten = create_tree_unflatten(dynamic, static)
 
-    cls.__add__ = __add__
-    cls.__radd__ = __radd__
-    cls.__sub__ = __sub__
-    cls.__neg__ = __neg__
-    cls.__mul__ = __mul__
-    cls.__rmul__ = __rmul__
-    cls.__truediv__ = __truediv__
-    cls.__rtruediv__ = __rtruediv__
-    cls.__pow__ = __pow__
-    cls.__rpow__ = __rpow__
-
     jax.tree_util.register_pytree_node(cls, cls._tree_flatten, cls._tree_unflatten)
 
     return cls
@@ -163,6 +150,17 @@ def modelclass(cls):
     if 'create' not in dir(cls):
         raise NotImplementedError(f"`create` method is not implemented for {cls.__name__} class")
     
+    cls.__add__ = __add__
+    cls.__radd__ = __radd__
+    cls.__sub__ = __sub__
+    cls.__neg__ = __neg__
+    cls.__mul__ = __mul__
+    cls.__rmul__ = __rmul__
+    cls.__truediv__ = __truediv__
+    cls.__rtruediv__ = __rtruediv__
+    cls.__pow__ = __pow__
+    cls.__rpow__ = __rpow__
+
     cls = pytree(cls)
     
     return cls
