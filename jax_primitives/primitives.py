@@ -15,7 +15,7 @@ class Linear:
     @classmethod
     def create(cls, in_dim, out_dim, key, bias: bool = True):
 
-        w = jnp.sqrt(2 / in_dim) * jax.random.normal(key, (in_dim, out_dim))
+        w = jnp.sqrt(2 / (in_dim + out_dim)) * jax.random.normal(key, (in_dim, out_dim))
         b = jnp.zeros(out_dim) if bias else None
 
         return cls(w, b)
@@ -37,7 +37,7 @@ class Adam:
     eps: float
     m: Dynamic[jax.Array]
     v: Dynamic[jax.Array]
-    scheduler: Static = None
+    scheduler: Dynamic = None
 
 
     @classmethod
@@ -48,7 +48,7 @@ class Adam:
         beta_1: float = 0.9,
         beta_2: float = 0.999,
         eps: float = 1e-8,
-        scheduler: Static = None
+        scheduler: Dynamic = None
     ):
 
         m = jax.tree_map(lambda x: jnp.zeros_like(x), model)
@@ -82,14 +82,13 @@ class SGD:
     
     t: Dynamic[int]
     alpha: float
-    scheduler: Static = None
-
+    scheduler: Dynamic = None
 
     @classmethod
     def create(
         cls,
         alpha: float = 0.001,
-        scheduler: Static = None
+        scheduler: Dynamic = None
     ):
 
         return cls(0, alpha, scheduler)
@@ -112,7 +111,7 @@ class SGD:
 @pytree
 class ExponentialAnnealing:
 
-    alpha_sequence: Static[jax.Array]
+    alpha_sequence: Dynamic[jax.Array]
 
     @classmethod
     def create(cls, n_steps: int, alpha_start: float, alpha_end: float):
@@ -125,7 +124,7 @@ class ExponentialAnnealing:
 @pytree
 class CosineAnnealing:
 
-    alpha_sequence: Static[jax.Array]
+    alpha_sequence: Dynamic[jax.Array]
 
     @classmethod
     def create(cls, n_steps: int, alpha_start: float, alpha_end: float):
