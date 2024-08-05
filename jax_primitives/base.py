@@ -174,6 +174,17 @@ def optimizerclass(cls):
     if 'create' not in dir(cls):
         raise NotImplementedError(f"`create` method is not implemented for {cls.__name__} class")
     
+
+    step_func_original = cls.step
+    
+    def step_func_updated(self, model, grads):
+
+        nonlocal step_func_original
+        alpha = self.alpha if self.scheduler is None else self.scheduler[self.t]
+        return step_func_original(self, model, grads, alpha)
+
+    cls.step = step_func_updated
+    
     cls = pytree(cls)
     
     return cls

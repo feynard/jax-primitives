@@ -57,12 +57,7 @@ class Adam:
         return cls(0, alpha, beta_1, beta_2, eps, m, v, scheduler)
     
     @jax.jit
-    def step(self, model, grads):
-                
-        if self.scheduler is not None:
-            alpha = self.scheduler[self.t]
-        else:
-            alpha = self.alpha
+    def step(self, model, grads, alpha):
 
         t = self.t + 1
 
@@ -94,12 +89,7 @@ class SGD:
         return cls(0, alpha, scheduler)
     
     @jax.jit
-    def step(self, model, grads):
-                
-        if self.scheduler is not None:
-            alpha = self.scheduler[self.t]
-        else:
-            alpha = self.alpha
+    def step(self, model, grads, alpha):
 
         t = self.t + 1
 
