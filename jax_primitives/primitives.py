@@ -27,6 +27,27 @@ class Linear:
             return x @ self.w
 
 
+@modelclass
+class Conv2d:
+
+    w: Dynamic[jax.Array]
+    b: Dynamic[jax.Array]
+
+    @classmethod
+    def create(cls, size, in_channels, out_channels, key, bias: bool = True):
+
+        w = jnp.sqrt(2 / (in_channels + out_channels)) * jax.random.normal(key, (out_channels, in_channels, size, size))
+        b = jnp.zeros(1, out_channels, 1, 1)
+
+        return cls(w, b)
+
+    def __call__(self, x):
+        if self.b is not None:
+            return jax.lax.conv(x, self.w, (1, 1), 'SAME') + self.b
+        else:
+            return jax.lax.conv(x, self.w, (1, 1), 'SAME')
+
+
 @optimizerclass
 class Adam:
     
