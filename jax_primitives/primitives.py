@@ -30,22 +30,30 @@ class Linear:
 @modelclass
 class Conv2d:
 
+    """
+    Default convention: image batch is of size (B, H, W, C), kernel is (C, C_out, H, W)
+    """
+
     w: Dynamic[jax.Array]
     b: Dynamic[jax.Array]
 
     @classmethod
     def create(cls, size, in_channels, out_channels, key, bias: bool = True):
 
-        w = jnp.sqrt(2 / (in_channels + out_channels)) * jax.random.normal(key, (out_channels, in_channels, size, size))
-        b = jnp.zeros(1, out_channels, 1, 1)
+        w = jnp.sqrt(2 / (in_channels + out_channels)) * jax.random.normal(key, (size, size, in_channels, out_channels))
+        b = jnp.zeros(out_channels) if bias else None
 
         return cls(w, b)
 
     def __call__(self, x):
+        dn = jax.lax.conv_dimension_numbers(x.shape, self.w.shape, ('NHWC', 'HWIO', 'NHWC'))
+
+        y = jax.lax.conv_general_dilated(x, self.w, (1, 1), 'SAME', (1, 1), (1, 1), dn)
+
         if self.b is not None:
-            return jax.lax.conv(x, self.w, (1, 1), 'SAME') + self.b
+            return y + self.b
         else:
-            return jax.lax.conv(x, self.w, (1, 1), 'SAME')
+            return y
 
 
 @optimizerclass
