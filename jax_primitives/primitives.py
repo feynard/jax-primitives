@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Tuple, Union, Literal
 
 import jax
 import jax.numpy as jnp
@@ -28,7 +28,7 @@ class Linear:
 
 
 @modelclass
-class Conv2d:
+class Conv3x3:
 
     """
     Default convention: image batch is of size (B, H, W, C), kernel is (C, C_out, H, W)
@@ -38,22 +38,70 @@ class Conv2d:
     b: Dynamic[jax.Array]
 
     @classmethod
-    def create(cls, size, in_channels, out_channels, key, bias: bool = True):
+    def create(cls, in_channels, out_channels, key, bias: bool = True):
 
-        w = jnp.sqrt(2 / (in_channels + out_channels)) * jax.random.normal(key, (size, size, in_channels, out_channels))
+        w = jnp.sqrt(2 / (in_channels + out_channels)) * jax.random.normal(key, (3, 3, in_channels, out_channels))
         b = jnp.zeros(out_channels) if bias else None
 
         return cls(w, b)
 
     def __call__(self, x):
-        dn = jax.lax.conv_dimension_numbers(x.shape, self.w.shape, ('NHWC', 'HWIO', 'NHWC'))
-
-        y = jax.lax.conv_general_dilated(x, self.w, (1, 1), 'SAME', (1, 1), (1, 1), dn)
+        d = jax.lax.conv_dimension_numbers(x.shape, self.w.shape, ('NHWC', 'HWIO', 'NHWC'))
+        y = jax.lax.conv_general_dilated(x, self.w, (1, 1), 'SAME', (1, 1), (1, 1), d)
 
         if self.b is not None:
             return y + self.b
         else:
             return y
+
+
+@modelclass
+class Interpolate2d:
+
+    scale: float
+    method: Union[Literal['nearest'], Literal['linear'], Literal['cubic']]
+
+    @classmethod
+    def create(cls, scale: float, method: str):
+        return cls(scale, method)
+
+    def __call__(self, x):
+        """
+        Convention: (B, H, W, C)
+        """
+
+        new_shape = (x.shape[0], int(x.shape[1] * self.scale), int(x.shape[2] * self.scale), x.shape[3])
+
+        return jax.image.resize(x, new_shape, self.method)
+
+
+@modelclass
+class BatchNorm:
+
+    w: Dynamic[jax.Array]
+    b: Dynamic[jax.Array]
+    eps: float
+    momentum: float
+
+    @classmethod
+    def create(cls, dim: int, eps: float = 1e-05, momentum: float = 0.1):
+
+        w = jnp.ones(dim)
+        b = jnp.ones(dim)
+
+        return cls(w, b)
+
+    def __call__(self, x, train: bool = True):
+        
+        m = jnp.mean(x, range(len(x.shape) - 1))
+        v = jnp.var(x, range(len(x.shape) - 1))
+
+        y = (x - m) / jnp.sqrt(v + self.eps) * self.w + self.b
+
+        if train:
+            return y
+        else:
+
 
 
 @optimizerclass
