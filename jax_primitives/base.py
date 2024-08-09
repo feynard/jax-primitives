@@ -12,6 +12,12 @@ Learnable: TypeAlias = Dynamic
 Constant: TypeAlias = Static
 
 
+"""
+Stateless API (in short):
+    module, output = module(input)
+"""
+
+
 def __add__(self, t: Self | SupportsFloat) -> Self:
     if isinstance(t, type(self)):
         return jax.tree_util.tree_map(lambda x, y: x + y, self, t)

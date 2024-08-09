@@ -22,10 +22,11 @@ class Linear:
         return cls(w, b)
 
     def __call__(self, x):
+
         if self.b is not None:
-            return x @ self.w + self.b
+            return self, x @ self.w + self.b
         else:
-            return x @ self.w
+            return self, x @ self.w
 
 
 @modelclass
@@ -51,9 +52,9 @@ class Conv3x3:
         y = jax.lax.conv_general_dilated(x, self.w, (1, 1), 'SAME', (1, 1), (1, 1), d)
 
         if self.b is not None:
-            return y + self.b
+            return self, y + self.b
         else:
-            return y
+            return self, y
 
 
 @modelclass
@@ -73,7 +74,7 @@ class Interpolate2d:
 
         new_shape = (x.shape[0], int(x.shape[1] * self.scale), int(x.shape[2] * self.scale), x.shape[3])
 
-        return jax.image.resize(x, new_shape, self.method)
+        return self, jax.image.resize(x, new_shape, self.method)
 
 
 @modelclass
@@ -97,7 +98,7 @@ class BatchNorm:
 
         return cls(w, b, m_tracked, v_tracked, eps, momentum)
 
-    #@partial(jax.jit, static_argnames='train')
+    @partial(jax.jit, static_argnames='train')
     def __call__(self, x, train: bool = True):
         
         m = jnp.mean(x, range(len(x.shape) - 1))
@@ -109,16 +110,16 @@ class BatchNorm:
             self.m_tracked = (1 - self.momentum) * self.m_tracked + self.momentum * m
             self.v_tracked = (1 - self.momentum) * self.v_tracked + self.momentum * v
 
-            return y
+            return self, y
         else:
-            return (x - self.m_tracked) / jnp.sqrt(self.v_tracked + self.eps) * self.w + self.b
+            return self, (x - self.m_tracked) / jnp.sqrt(self.v_tracked + self.eps) * self.w + self.b
 
 
 @optimizerclass
 class Adam:
     
     t: Dynamic[int]
-    alpha: float
+    alpha: Dynamic[float]
     beta_1: float
     beta_2: float
     eps: float
@@ -146,24 +147,24 @@ class Adam:
     @jax.jit
     def step(self, model, grads, alpha):
 
-        t = self.t + 1
+        self.t = self.t + 1
 
         m = self.beta_1 * self.m + (1 - self.beta_1) * grads
         v = self.beta_2 * self.v + (1 - self.beta_2) * grads ** 2
 
-        m_hat = m / (1 - self.beta_1 ** t)
-        v_hat = v / (1 - self.beta_2 ** t)
+        m_hat = m / (1 - self.beta_1 ** self.t)
+        v_hat = v / (1 - self.beta_2 ** self.t)
 
         model = model - alpha * m_hat / (v_hat ** 0.5 + self.eps)
 
-        return Adam(t, self.alpha, self.beta_1, self.beta_2, self.eps, m, v, self.scheduler), model
+        return self, model
 
 
 @optimizerclass
 class SGD:
     
     t: Dynamic[int]
-    alpha: float
+    alpha: Dynamic[float]
     scheduler: Dynamic = None
 
     @classmethod
@@ -178,11 +179,11 @@ class SGD:
     @jax.jit
     def step(self, model, grads, alpha):
 
-        t = self.t + 1
+        self.t = self.t + 1
 
         model = model - alpha * grads
 
-        return SGD(t, self.alpha, self.scheduler), model
+        return self, model
 
 
 @pytree
@@ -232,9 +233,9 @@ class MLP:
         y = x
         
         for i, layer in enumerate(self.layers):
-            y = layer(y)
+            _, y = layer(y)
 
             if i != len(self.layers) - 1:
                 y = jax.nn.relu(y)
 
-        return y
+        return self, y
