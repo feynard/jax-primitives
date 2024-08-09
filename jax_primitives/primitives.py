@@ -1,4 +1,5 @@
 from typing import List, Tuple, Union, Literal
+from functools import partial
 
 import jax
 import jax.numpy as jnp
@@ -80,6 +81,8 @@ class BatchNorm:
 
     w: Dynamic[jax.Array]
     b: Dynamic[jax.Array]
+    m_tracked: Dynamic[jax.Array]
+    v_tracked: Dynamic[jax.Array]
     eps: float
     momentum: float
 
@@ -87,21 +90,28 @@ class BatchNorm:
     def create(cls, dim: int, eps: float = 1e-05, momentum: float = 0.1):
 
         w = jnp.ones(dim)
-        b = jnp.ones(dim)
+        b = jnp.zeros(dim)
 
-        return cls(w, b)
+        m_tracked = jnp.zeros(dim)
+        v_tracked = jnp.ones(dim)
 
+        return cls(w, b, m_tracked, v_tracked, eps, momentum)
+
+    #@partial(jax.jit, static_argnames='train')
     def __call__(self, x, train: bool = True):
         
         m = jnp.mean(x, range(len(x.shape) - 1))
-        v = jnp.var(x, range(len(x.shape) - 1))
-
-        y = (x - m) / jnp.sqrt(v + self.eps) * self.w + self.b
 
         if train:
+            v = jnp.var(x, range(len(x.shape) - 1), ddof=1)
+            y = (x - m) / jnp.sqrt(v + self.eps) * self.w + self.b
+
+            self.m_tracked = (1 - self.momentum) * self.m_tracked + self.momentum * m
+            self.v_tracked = (1 - self.momentum) * self.v_tracked + self.momentum * v
+
             return y
         else:
-
+            return (x - self.m_tracked) / jnp.sqrt(self.v_tracked + self.eps) * self.w + self.b
 
 
 @optimizerclass
