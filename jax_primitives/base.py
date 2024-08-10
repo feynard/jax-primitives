@@ -1,6 +1,6 @@
 from dataclasses import dataclass
-from typing import (List, Self, SupportsFloat, Type, TypeAlias, TypeVar, Union,
-                    get_args, get_origin, get_type_hints)
+import functools
+from typing import List, Self, SupportsFloat, Type, TypeAlias, get_args, get_origin, get_type_hints
 
 import jax
 
@@ -10,12 +10,6 @@ class Static[T]: ...
 
 Learnable: TypeAlias = Dynamic
 Constant: TypeAlias = Static
-
-
-"""
-Stateless API (in short):
-    module, output = module(input)
-"""
 
 
 def __add__(self, t: Self | SupportsFloat) -> Self:
@@ -179,18 +173,30 @@ def optimizerclass(cls):
 
     if 'create' not in dir(cls):
         raise NotImplementedError(f"`create` method is not implemented for {cls.__name__} class")
-    
 
     step_func_original = cls.step
     
-    def step_func_updated(self, model, grads):
+    @functools.wraps(cls.step)
+    def _step(self, model, grads):
 
         nonlocal step_func_original
         alpha = self.alpha if self.scheduler is None else self.scheduler[self.t]
         return step_func_original(self, model, grads, alpha)
 
-    cls.step = step_func_updated
+    cls.step = _step
     
     cls = pytree(cls)
     
     return cls
+
+
+def stateless(method):
+
+    @functools.wraps(method)
+    def _method(self, *args, train: bool, **kwargs):
+        if train:
+            return self, method(self, *args, **kwargs)
+        else:
+            return method(self, *args, **kwargs)
+    
+    return _method
