@@ -154,6 +154,9 @@ def pytree(cls):
     return cls
 
 
+schedulerclass = pytree
+
+
 def modelclass(cls):
     
     if '__call__' not in dir(cls):

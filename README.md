@@ -19,8 +19,8 @@ class LinearLayer:
     out_dim: Static         # static / constant, non learnable
 
     def __init__(self, in_dim, out_dim, key):
-        w = jnp.sqrt(2 / in_dim) * jax.random.normal(key, (in_dim, out_dim))
-        b = jnp.zeros(out_dim)
+        self.w = jnp.sqrt(2 / (in_dim + out_dim)) * jax.random.normal(key, (in_dim, out_dim))
+        self.b = jnp.zeros(out_dim)
 
     def __call__(self, x):
         return x @ self.w + self.b
@@ -38,6 +38,7 @@ import jax_primitives as jp
 
 key = jax.random.key(0)
 n_epochs = 2000
+
 mlp = jp.MLP(in_dim=1, out_dim=1, inner_dim=64, n_layers=4, key=key)
 opt = jp.Adam(mlp, jp.ExponentialAnnealing(n_epochs, 0.01, 0.001))
 
