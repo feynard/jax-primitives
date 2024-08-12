@@ -1,7 +1,7 @@
 import jax
 import jax.numpy as jnp
 
-from .base import Dynamic, optimizerclass, schedulerclass
+from .base import Dynamic, Model, optimizerclass, schedulerclass
 
 
 @optimizerclass
@@ -12,13 +12,13 @@ class Adam:
     beta_1: float
     beta_2: float
     eps: float
-    m: Dynamic
-    v: Dynamic
+    m: Model
+    v: Model
     scheduler: Dynamic = None
 
     def __init__(
         self,
-        model: Dynamic,
+        model: Model,
         alpha: float = 0.001,
         beta_1: float = 0.9,
         beta_2: float = 0.999,

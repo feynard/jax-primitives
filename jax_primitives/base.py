@@ -1,5 +1,5 @@
-from dataclasses import dataclass
 import functools
+import itertools
 from typing import List, Self, SupportsFloat, Type, TypeAlias, get_args, get_origin, get_type_hints
 
 import jax
@@ -7,9 +7,6 @@ import jax
 
 class Dynamic[T]: ...
 class Static[T]: ...
-
-Learnable: TypeAlias = Dynamic
-Constant: TypeAlias = Static
 Model: TypeAlias = Dynamic
 
 
@@ -68,11 +65,6 @@ def __rpow__(self, t: Self | SupportsFloat) -> Self:
     elif isinstance(t, SupportsFloat):
         return jax.tree_util.tree_map(lambda x: t ** x, self)
 
-'''
-def apply(self, f: Callable) -> Self:
-    return jax.tree_util.tree_map(lambda x: f(x), self)
-'''
-
 
 def create_tree_flatten(dynamic_vars: List[str], static_vars: List[str]):
     dynamic_vars = dynamic_vars
@@ -96,15 +88,15 @@ def create_tree_unflatten(dynamic_vars: List[str], static_vars: List[str]):
         nonlocal dynamic_vars
         nonlocal static_vars
 
-        memebres = {
+        members = {
             var: children[i] if i < len(dynamic_vars) else aux_data[i - len(dynamic_vars)]
-            for i, var in enumerate(dynamic_vars + static_vars)
+            for i, var in enumerate(itertools.chain(dynamic_vars, static_vars))
         }
 
         obj = object.__new__(cls)
 
-        for k in memebres:
-            setattr(obj, k, memebres[k])
+        for k in members:
+            setattr(obj, k, members[k])
 
         return obj
     
@@ -113,15 +105,19 @@ def create_tree_unflatten(dynamic_vars: List[str], static_vars: List[str]):
 
 def is_dynamic(type_object: Type) -> bool:
 
+    dynamic_types = (Dynamic, jax.Array)
+
     def _recursive_helper(t):
-        if t is Dynamic or t is jax.Array:
+        nonlocal dynamic_types
+
+        if t in dynamic_types:
             return True
-        
+
         origin = get_origin(t)
 
-        if origin is Dynamic:
+        if origin in dynamic_types:
             return True
-        
+
         if origin is None:
             return False
         else:
@@ -129,12 +125,13 @@ def is_dynamic(type_object: Type) -> bool:
                 if _recursive_helper(a):
                     return True
 
+        return False
+
     return _recursive_helper(type_object)
 
 
 def pytree(cls):
-    cls = dataclass(cls, repr=False)
-    
+
     hints = get_type_hints(cls)
     
     dynamic = []
@@ -152,9 +149,6 @@ def pytree(cls):
     jax.tree_util.register_pytree_node(cls, cls._tree_flatten, cls._tree_unflatten)
 
     return cls
-
-
-schedulerclass = pytree
 
 
 def modelclass(cls):
@@ -199,13 +193,11 @@ def optimizerclass(cls):
     return cls
 
 
-def stateless(method):
+def schedulerclass(cls):
 
-    @functools.wraps(method)
-    def _method(self, *args, train: bool, **kwargs):
-        if train:
-            return self, method(self, *args, **kwargs)
-        else:
-            return method(self, *args, **kwargs)
-    
-    return _method
+    if '__getitem__' not in dir(cls):
+        raise NotImplementedError(f"`__getitem__` method is not implemented for {cls.__name__} class")
+
+    cls = pytree(cls)
+
+    return cls
