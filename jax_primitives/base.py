@@ -159,11 +159,6 @@ def modelclass(cls):
     if '__call__' not in dir(cls):
         raise NotImplementedError(f"`__call__` method is not implemented for {cls.__name__} class")
 
-    '''
-    if 'create' not in dir(cls):
-        raise NotImplementedError(f"`create` method is not implemented for {cls.__name__} class")
-    '''
-
     cls.__add__ = __add__
     cls.__radd__ = __radd__
     cls.__sub__ = __sub__
@@ -184,11 +179,6 @@ def optimizerclass(cls):
     
     if 'step' not in dir(cls):
         raise NotImplementedError(f"`step` method is not implemented for {cls.__name__} class")
-
-    '''
-    if 'create' not in dir(cls):
-        raise NotImplementedError(f"`create` method is not implemented for {cls.__name__} class")
-    '''
 
     step_func_original = cls.step
     

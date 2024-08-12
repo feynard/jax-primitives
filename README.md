@@ -18,19 +18,15 @@ class LinearLayer:
     in_dim: int             # static / constant, non learnable
     out_dim: Static         # static / constant, non learnable
 
-    @classmethod
-    def create(cls, in_dim, out_dim, key):
+    def __init__(self, in_dim, out_dim, key):
         w = jnp.sqrt(2 / in_dim) * jax.random.normal(key, (in_dim, out_dim))
         b = jnp.zeros(out_dim)
 
-        return cls(w, b, in_dim, out_dim)
-
-    @jax.jit
     def __call__(self, x):
         return x @ self.w + self.b
 
 key = jax.random.key(0)
-layer = LinearLayer.create(8, 16, key)
+layer = LinearLayer(8, 16, key)
 ```
 
 ## Example
@@ -41,8 +37,9 @@ import jax
 import jax_primitives as jp
 
 key = jax.random.key(0)
-mlp = jp.MLP.create(in_dim=1, out_dim=1, inner_dim=64, n_layers=4, key=key)
-opt = jp.Adam.create(mlp, alpha=0.01)
+n_epochs = 2000
+mlp = jp.MLP(in_dim=1, out_dim=1, inner_dim=64, n_layers=4, key=key)
+opt = jp.Adam(mlp, jp.ExponentialAnnealing(n_epochs, 0.01, 0.001))
 
 def mse(model, x, y):
     return jnp.mean((model(x) - y) ** 2)
@@ -66,7 +63,7 @@ Train the model
 x = x.reshape(100, 1)
 y = y.reshape(100, 1)
 
-for i in range(2000):
+for i in range(n_epochs):
     opt, mlp = update(opt, mlp, x, y)
 
 y_pred = mlp(x.reshape(100, 1))
