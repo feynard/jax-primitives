@@ -106,19 +106,24 @@ def create_tree_unflatten(dynamic_vars: List[str], static_vars: List[str]):
 
 
 def is_dynamic(type_object: Type) -> bool:
-    origin = get_origin(type_object)
 
-    if type_object is Dynamic:
-        return True
-
-    if origin is not None and origin is Dynamic:
-        return True
+    def _recursive_helper(t):
+        if t is Dynamic or t is jax.Array:
+            return True
         
-    if origin is None and get_args(type_object) is Dynamic:
-        return True
-    
-    return False
+        origin = get_origin(t)
 
+        if origin is Dynamic:
+            return True
+        
+        if origin is None:
+            return False
+        else:
+            for a in get_args(t):
+                if _recursive_helper(a):
+                    return True
+
+    return _recursive_helper(type_object)
 
 def pytree(cls):
     cls = dataclass(cls, repr=False)
