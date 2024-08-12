@@ -9,17 +9,13 @@ from .base import Dynamic, Static, modelclass, optimizerclass, pytree
 
 @modelclass
 class Linear:
-    
-    w: Dynamic[jax.Array]
-    b: Dynamic[jax.Array]
 
-    @classmethod
-    def create(cls, in_dim, out_dim, key, bias: bool = True):
+    w: jax.Array
+    b: jax.Array
 
-        w = jnp.sqrt(2 / (in_dim + out_dim)) * jax.random.normal(key, (in_dim, out_dim))
-        b = jnp.zeros(out_dim) if bias else None
-
-        return cls(w, b)
+    def __init__(self, in_dim, out_dim, key, bias: bool = True):
+        self.w = jnp.sqrt(2 / (in_dim + out_dim)) * jax.random.normal(key, (in_dim, out_dim))
+        self.b = jnp.zeros(out_dim) if bias else None
 
     def __call__(self, x):
 
@@ -36,16 +32,13 @@ class Conv2d:
     Default convention: image batch is of size (B, H, W, C), kernel is (C, C_out, H, W)
     """
 
-    w: Dynamic[jax.Array]
-    b: Dynamic[jax.Array]
+    w: jax.Array
+    b: jax.Array
 
-    @classmethod
-    def create(cls, size, in_channels, out_channels, key, bias: bool = True):
-
-        w = jnp.sqrt(2 / (in_channels + out_channels)) * jax.random.normal(key, (size, size, in_channels, out_channels))
-        b = jnp.zeros(out_channels) if bias else None
-
-        return cls(w, b)
+    def __init__(self, size, in_channels, out_channels, key, bias: bool = True):
+        self.w = jnp.sqrt(2 / (in_channels + out_channels)) * \
+            jax.random.normal(key, (size, size, in_channels, out_channels))
+        self.b = jnp.zeros(out_channels) if bias else None
 
     def __call__(self, x):
         d = jax.lax.conv_dimension_numbers(x.shape, self.w.shape, ('NHWC', 'HWIO', 'NHWC'))
@@ -63,9 +56,9 @@ class Interpolate2d:
     scale: float
     method: Union[Literal['nearest'], Literal['linear'], Literal['cubic']]
 
-    @classmethod
-    def create(cls, scale: float, method: str):
-        return cls(scale, method)
+    def __init__(self, scale: float, method: str):
+        self.scale = scale
+        self.method = method
 
     def __call__(self, x):
         """
@@ -88,16 +81,17 @@ class BatchNorm:
     momentum: float
     first_call: bool
 
-    @classmethod
-    def create(cls, dim: int, eps: float = 1e-05, momentum: float = 0.1):
+    def __init__(self, dim: int, eps: float = 1e-05, momentum: float = 0.1):
 
-        w = jnp.ones(dim)
-        b = jnp.zeros(dim)
+        self.w = jnp.ones(dim)
+        self.b = jnp.zeros(dim)
 
-        m_tracked = jnp.zeros(dim)
-        v_tracked = jnp.ones(dim)
+        self.m_tracked = jnp.zeros(dim)
+        self.v_tracked = jnp.ones(dim)
 
-        return cls(w, b, m_tracked, v_tracked, eps, momentum, True)
+        self.eps = eps
+        self.momentum = momentum
+        self.first_call = True
 
     def __call__(self, x, train: bool = True):
 
@@ -128,14 +122,12 @@ class Adam:
     beta_1: float
     beta_2: float
     eps: float
-    m: Dynamic[jax.Array]
-    v: Dynamic[jax.Array]
+    m: Dynamic
+    v: Dynamic
     scheduler: Dynamic = None
 
-
-    @classmethod
-    def create(
-        cls,
+    def __init__(
+        self,
         model: Dynamic,
         alpha: float = 0.001,
         beta_1: float = 0.9,
@@ -143,13 +135,16 @@ class Adam:
         eps: float = 1e-8,
         scheduler: Dynamic = None
     ):
+        self.t = 0
+        self.alpha = alpha
+        self.m = jax.tree_map(lambda x: jnp.zeros_like(x), model)
+        self.v = jax.tree_map(lambda x: jnp.zeros_like(x), model)
+        self.beta_1 = beta_1
+        self.beta_2 = beta_2
+        self.eps = eps
+        self.scheduler = scheduler
 
-        m = jax.tree_map(lambda x: jnp.zeros_like(x), model)
-        v = jax.tree_map(lambda x: jnp.zeros_like(x), model)
-
-        return cls(0, alpha, beta_1, beta_2, eps, m, v, scheduler)
-    
-    def step(self, model, grads, alpha):
+    def step(self, model, grads):
         self.t = self.t + 1
 
         self.m = self.beta_1 * self.m + (1 - self.beta_1) * grads
@@ -158,7 +153,7 @@ class Adam:
         m_hat = self.m / (1 - self.beta_1 ** self.t)
         v_hat = self.v / (1 - self.beta_2 ** self.t)
 
-        model = model - alpha * m_hat / (v_hat ** 0.5 + self.eps)
+        model = model - self.alpha * m_hat / (v_hat ** 0.5 + self.eps)
 
         return model
 
@@ -170,21 +165,18 @@ class SGD:
     alpha: Dynamic[float]
     scheduler: Dynamic = None
 
-    @classmethod
-    def create(
-        cls,
+    def __init__(
+        self,
         alpha: float = 0.001,
         scheduler: Dynamic = None
     ):
-
-        return cls(0, alpha, scheduler)
+        self.t = 0
+        self.alpha = alpha
+        self.scheduler = scheduler
     
-    def step(self, model, grads, alpha):
-
+    def step(self, model, grads):
         self.t = self.t + 1
-
-        model = model - alpha * grads
-
+        model = model - self.alpha * grads
         return model
 
 
@@ -193,9 +185,8 @@ class ExponentialAnnealing:
 
     alpha_sequence: Dynamic[jax.Array]
 
-    @classmethod
-    def create(cls, n_steps: int, alpha_start: float, alpha_end: float):
-        return cls(jnp.exp(jnp.linspace(jnp.log(alpha_start), jnp.log(alpha_end), n_steps)))
+    def __init__(self, n_steps: int, alpha_start: float, alpha_end: float):
+        self.alpha_sequence = jnp.exp(jnp.linspace(jnp.log(alpha_start), jnp.log(alpha_end), n_steps))
     
     def __getitem__(self, i: int):
         return self.alpha_sequence[i]
@@ -206,11 +197,10 @@ class CosineAnnealing:
 
     alpha_sequence: Dynamic[jax.Array]
 
-    @classmethod
-    def create(cls, n_steps: int, alpha_start: float, alpha_end: float):
+    def __init__(self, n_steps: int, alpha_start: float, alpha_end: float):
         t = jnp.linspace(0, jnp.pi, n_steps)
-        return cls(0.5 * jnp.cos(t) * (alpha_start - alpha_end) + 0.5 * (alpha_start + alpha_end))
-    
+        self.alpha_sequence = 0.5 * jnp.cos(t) * (alpha_start - alpha_end) + 0.5 * (alpha_start + alpha_end)
+
     def __getitem__(self, i: int):
         return self.alpha_sequence[i]
 
@@ -220,17 +210,14 @@ class MLP:
 
     linear_layers: Dynamic[List[Linear]]
 
-    @classmethod
-    def create(cls, in_dim, out_dim, inner_dim, n_layers, key):
+    def __init__(self, in_dim, out_dim, inner_dim, n_layers, key):
         keys = jax.random.split(key, n_layers + 2)
         
-        linear_layers = []
+        self.linear_layers = []
 
-        linear_layers += [Linear.create(in_dim, inner_dim, keys[0])]
-        linear_layers += [Linear.create(inner_dim, inner_dim, keys[i + 1]) for i in range(n_layers)]
-        linear_layers += [Linear.create(inner_dim, out_dim, keys[n_layers + 1])]
-
-        return cls(linear_layers)
+        self.linear_layers += [Linear(in_dim, inner_dim, keys[0])]
+        self.linear_layers += [Linear(inner_dim, inner_dim, keys[i + 1]) for i in range(n_layers)]
+        self.linear_layers += [Linear(inner_dim, out_dim, keys[n_layers + 1])]
 
     def __call__(self, x):
         y = x

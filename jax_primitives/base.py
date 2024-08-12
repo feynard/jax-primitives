@@ -10,6 +10,7 @@ class Static[T]: ...
 
 Learnable: TypeAlias = Dynamic
 Constant: TypeAlias = Static
+Model: TypeAlias = Dynamic
 
 
 def __add__(self, t: Self | SupportsFloat) -> Self:
@@ -95,12 +96,17 @@ def create_tree_unflatten(dynamic_vars: List[str], static_vars: List[str]):
         nonlocal dynamic_vars
         nonlocal static_vars
 
-        kwargs = {
+        memebres = {
             var: children[i] if i < len(dynamic_vars) else aux_data[i - len(dynamic_vars)]
             for i, var in enumerate(dynamic_vars + static_vars)
         }
 
-        return cls(**kwargs)
+        obj = object.__new__(cls)
+
+        for k in memebres:
+            setattr(obj, k, memebres[k])
+
+        return obj
     
     return tree_unflatten
 
@@ -124,6 +130,7 @@ def is_dynamic(type_object: Type) -> bool:
                     return True
 
     return _recursive_helper(type_object)
+
 
 def pytree(cls):
     cls = dataclass(cls, repr=False)
@@ -152,9 +159,11 @@ def modelclass(cls):
     if '__call__' not in dir(cls):
         raise NotImplementedError(f"`__call__` method is not implemented for {cls.__name__} class")
 
+    '''
     if 'create' not in dir(cls):
         raise NotImplementedError(f"`create` method is not implemented for {cls.__name__} class")
-    
+    '''
+
     cls.__add__ = __add__
     cls.__radd__ = __radd__
     cls.__sub__ = __sub__
@@ -176,8 +185,10 @@ def optimizerclass(cls):
     if 'step' not in dir(cls):
         raise NotImplementedError(f"`step` method is not implemented for {cls.__name__} class")
 
+    '''
     if 'create' not in dir(cls):
         raise NotImplementedError(f"`create` method is not implemented for {cls.__name__} class")
+    '''
 
     step_func_original = cls.step
     
@@ -185,8 +196,8 @@ def optimizerclass(cls):
     def _step(self, model, grads):
 
         nonlocal step_func_original
-        alpha = self.alpha if self.scheduler is None else self.scheduler[self.t]
-        return step_func_original(self, model, grads, alpha)
+        self.alpha = self.alpha if self.scheduler is None else self.scheduler[self.t]
+        return step_func_original(self, model, grads)
 
     cls.step = _step
     
