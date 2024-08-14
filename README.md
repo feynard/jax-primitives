@@ -48,7 +48,7 @@ def mse(model, x, y):
 @jax.jit
 def update(opt, model, x, y):
     loss, grads = jax.value_and_grad(mse)(model, x, y)
-    opt, model = opt.step(model, grads)
+    model = opt.step(model, grads)
     return opt, model
 
 x = jnp.linspace(-1, 1, 100)

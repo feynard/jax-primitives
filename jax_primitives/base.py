@@ -1,4 +1,5 @@
 import functools
+import inspect
 import itertools
 from typing import List, Self, SupportsFloat, Type, TypeAlias, get_args, get_origin, get_type_hints
 
@@ -201,3 +202,29 @@ def schedulerclass(cls):
     cls = pytree(cls)
 
     return cls
+
+
+def vmap(f, in_axes):
+
+    argnames = f.__code__.co_varnames
+    signature = inspect.signature(f).parameters
+
+    @functools.wraps(f)
+    def _f(*args, **kwargs):
+        nonlocal argnames
+        nonlocal signature
+
+        args_list = []
+        
+        for i, a in enumerate(argnames):
+            if a in kwargs:
+                args_list.append(kwargs[a])
+            else:
+                if i < len(args):
+                    args_list.append(args[i])
+                elif signature[a].default is not inspect.Signature.empty:
+                    args_list.append(signature[a].default)
+
+        return jax.vmap(f, in_axes=in_axes)(*args_list)
+
+    return _f
