@@ -206,24 +206,24 @@ def schedulerclass(cls):
 
 def vmap(f, in_axes):
 
-    argnames = f.__code__.co_varnames
-    signature = inspect.signature(f).parameters
+    parameters = inspect.signature(f).parameters
 
     @functools.wraps(f)
     def _f(*args, **kwargs):
-        nonlocal argnames
-        nonlocal signature
+        nonlocal parameters
 
         args_list = []
         
-        for i, a in enumerate(argnames):
+        for i, a in enumerate(parameters.keys()):
             if a in kwargs:
                 args_list.append(kwargs[a])
             else:
                 if i < len(args):
                     args_list.append(args[i])
-                elif signature[a].default is not inspect.Signature.empty:
-                    args_list.append(signature[a].default)
+                elif parameters[a].default is not inspect.Signature.empty:
+                    args_list.append(parameters[a].default)
+                else:
+                    raise ValueError(f"Wrong set of parameters for function {f.__name__}: {f}")
 
         return jax.vmap(f, in_axes=in_axes)(*args_list)
 
